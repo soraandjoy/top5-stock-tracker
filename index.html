@@ -3,165 +3,214 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stock Trends — Tesla, Amazon, Apple, Facebook, Google, Nvidia</title>
+  <title>Daily Stock Trends — TSLA · AMZN · AAPL · META · GOOGL · NVDA</title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* Apple 스타일 기반 디자인 */
+    /* ========== Design Tokens ========== */
+    :root {
+      --bg: #f5f5f7;
+      --card: #ffffff;
+      --fg: #1d1d1f;
+      --muted: #6e6e73;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+      --shadow-hover: 0 12px 32px rgba(0,0,0,0.1);
+      --primary: #0071e3;   /* apple blue */
+      --danger:  #d70015;   /* apple red  */
+      --ring: rgba(0,113,227,.15);
+      --grid: rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --card: #111113;
+        --fg: #f5f5f7;
+        --muted: #a1a1a6;
+        --shadow: 0 8px 24px rgba(0,0,0,0.6);
+        --shadow-hover: 0 12px 32px rgba(0,0,0,0.7);
+        --grid: rgba(255,255,255,0.08);
+        --ring: rgba(0,113,227,.25);
+      }
+    }
+
+    /* ========== Base ========== */
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
                    "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background-color: #f5f5f7;
-      color: #1d1d1f;
-      line-height: 1.6;
+      background: var(--bg);
+      color: var(--fg);
       -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
     }
-
     header {
       text-align: center;
-      padding: 60px 20px 30px;
+      padding: 56px 20px 22px;
     }
+    header h1 { margin: 0; font-size: 2.25rem; font-weight: 600; }
+    header p  { margin: 10px 0 0; color: var(--muted); }
 
-    header h1 {
-      font-size: 2.5rem;
-      font-weight: 600;
-      margin: 0;
-    }
-
-    header p {
-      color: #6e6e73;
-      font-size: 1rem;
-      margin-top: 10px;
+    .updated {
+      margin-top: 8px; font-size: 0.95rem; color: var(--muted);
     }
 
     main {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-      gap: 40px;
-      padding: 0 40px 80px;
-      max-width: 1200px;
+      gap: 36px;
+      padding: 0 36px 72px;
+      max-width: 1240px;
       margin: 0 auto;
     }
 
     .card {
-      background: #fff;
+      background: var(--card);
       border-radius: 24px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-      padding: 24px 24px 32px;
-      transition: transform .3s ease, box-shadow .3s ease;
+      box-shadow: var(--shadow);
+      padding: 22px 22px 28px;
+      transition: transform .25s ease, box-shadow .25s ease;
     }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    .head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      margin-bottom: 12px;
     }
-
-    .stock-title {
-      font-size: 1.4rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
+    .title { font-size: 1.25rem; font-weight: 600; }
     .change {
-      font-size: 1rem;
-      color: #0071e3; /* 상승 시 파랑, 하락 시 빨강 */
-      margin-bottom: 20px;
+      font-size: 1rem; font-weight: 600;
     }
 
-    canvas {
-      width: 100%;
-      height: 260px !important;
+    .btns {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin: 8px 0 16px;
     }
+    .btn {
+      appearance: none; border: 1px solid transparent; background: transparent;
+      color: var(--fg); padding: 6px 10px; border-radius: 999px; cursor: pointer;
+      font-size: .9rem;
+    }
+    .btn:hover { background: rgba(0,0,0,.05); }
+    @media (prefers-color-scheme: dark) { .btn:hover { background: rgba(255,255,255,.08); } }
+    .btn.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 6px var(--ring);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    canvas { width: 100%; height: 260px !important; }
 
     footer {
-      text-align: center;
-      font-size: 0.9rem;
-      color: #86868b;
-      padding: 40px 0;
+      text-align: center; color: var(--muted);
+      font-size: .95rem; padding: 36px 0;
     }
   </style>
 </head>
-
 <body>
   <header>
     <h1>📈 Daily Stock Trends</h1>
     <p>Tesla · Amazon · Apple · Facebook · Google · Nvidia</p>
+    <div class="updated" id="updated">업데이트 시간 불러오는 중…</div>
   </header>
 
-  <main id="chart-container">
-    <p style="text-align:center; grid-column:1/-1;">Loading data...</p>
+  <main id="grid">
+    <p style="text-align:center; grid-column:1/-1;">Loading data…</p>
   </main>
 
-  <footer>Data updates daily at 9 AM EST · Powered by Yahoo Finance API</footer>
+  <footer>Auto-updated daily at 9 AM EST · Yahoo Finance (Chart only)</footer>
 
   <script>
-    // ✅ data/stocks.json 파일 불러오기
-    async function loadData() {
-      try {
-        const res = await fetch("data/stocks.json?_=" + Date.now()); // 캐시 방지
-        const json = await res.json();
-        const stocks = json.stocks || [];
+    let PRIMARY = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+    let GRID    = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
+    let MUTED   = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
 
-        const container = document.getElementById("chart-container");
-        container.innerHTML = "";
+    async function load() {
+      const res = await fetch("data/stocks.json?_=" + Date.now());
+      const json = await res.json();
 
-        if (stocks.length === 0) {
-          container.innerHTML = "<p>No stock data available.</p>";
-          return;
-        }
+      // 마지막 업데이트 시간 표시
+      const updated = json.updated_at || (json.date + "T00:00:00Z");
+      const local = new Date(updated);
+      document.getElementById("updated").textContent =
+        "Last updated: " + local.toLocaleString(undefined, {hour12:false});
 
-        // 각 주식별 카드 생성
-        stocks.forEach((s, i) => {
-          const card = document.createElement("div");
-          card.className = "card";
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
 
-          const title = document.createElement("div");
-          title.className = "stock-title";
-          title.textContent = s.name;
-
-          const change = document.createElement("div");
-          change.className = "change";
-          const arrow = s.change >= 0 ? "▲" : "▼";
-          change.style.color = s.change >= 0 ? "#0071e3" : "#d70015";
-          change.textContent = `${arrow} ${s.change}%`;
-
-          const canvas = document.createElement("canvas");
-          canvas.id = `chart-${i}`;
-
-          card.appendChild(title);
-          card.appendChild(change);
-          card.appendChild(canvas);
-          container.appendChild(card);
-
-          drawChart(canvas, s);
-        });
-      } catch (err) {
-        console.error("Error loading JSON:", err);
-        document.getElementById("chart-container").innerHTML =
-          "<p>⚠️ 데이터를 불러오는 중 오류가 발생했습니다.</p>";
-      }
+      (json.stocks || []).forEach((s, idx) => {
+        grid.appendChild(makeCard(s, idx));
+      });
     }
 
-    // ✅ 차트 그리기
-    function drawChart(canvas, stock) {
-      const data = stock.today_data;
-      if (!data || data.length === 0) return;
+    function makeCard(stock, index) {
+      const wrap = document.createElement("section");
+      wrap.className = "card";
 
-      const labels = data.map(p => p.Datetime.slice(11, 16)); // HH:MM 형태
-      const prices = data.map(p => p.Close);
+      // 헤더
+      const head = document.createElement("div"); head.className = "head";
+      const title = document.createElement("div"); title.className = "title"; title.textContent = stock.name;
+      const change = document.createElement("div"); change.className = "change";
+      const arrow = (stock.change ?? 0) >= 0 ? "▲" : "▼";
+      change.style.color = (stock.change ?? 0) >= 0 ? PRIMARY : "#d70015";
+      change.textContent = `${arrow} ${Number(stock.change ?? 0).toFixed(2)}%`;
+      head.appendChild(title); head.appendChild(change);
 
-      new Chart(canvas.getContext("2d"), {
+      // 기간 버튼
+      const btns = document.createElement("div"); btns.className = "btns";
+      const periods = [
+        { key: "data_1d", label: "1 DAY" },
+        { key: "data_1w", label: "1 WEEK" },
+        { key: "data_1m", label: "1 MONTH" },
+        { key: "data_3m", label: "3 MONTH" }
+      ];
+      let currentKey = "data_1d";
+
+      const cv = document.createElement("canvas"); cv.id = `c-${index}`;
+
+      // 버튼들 추가
+      periods.forEach(p => {
+        const b = document.createElement("button");
+        b.className = "btn" + (p.key === currentKey ? " active" : "");
+        b.textContent = p.label;
+        b.onclick = () => {
+          currentKey = p.key;
+          [...btns.querySelectorAll(".btn")].forEach(el => el.classList.remove("active"));
+          b.classList.add("active");
+          draw(cv, stock, currentKey);
+        };
+        btns.appendChild(b);
+      });
+
+      wrap.appendChild(head);
+      wrap.appendChild(btns);
+      wrap.appendChild(cv);
+
+      // 최초 1회: 1일 차트
+      draw(cv, stock, currentKey);
+
+      return wrap;
+    }
+
+    function draw(canvas, stock, key) {
+      const ctx = canvas.getContext("2d");
+      const dataset = stock[key] || [];
+      const labels = dataset.map(p => formatLabel(p.Datetime));
+      const values = dataset.map(p => p.Close);
+
+      // 기존 차트 제거
+      if (canvas._chart) { canvas._chart.destroy(); }
+
+      canvas._chart = new Chart(ctx, {
         type: "line",
         data: {
           labels,
           datasets: [{
-            data: prices,
-            borderColor: "#0071e3",
-            backgroundColor: "rgba(0,113,227,0.1)",
+            data: values,
+            borderColor: PRIMARY,
+            backgroundColor: hexToRgba(PRIMARY, 0.12),
             borderWidth: 2,
             pointRadius: 0,
             fill: true,
@@ -172,28 +221,40 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              mode: "index",
-              intersect: false,
-              callbacks: {
-                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
-              }
+              mode: "index", intersect: false,
+              callbacks: { label: ctx => `$${ctx.parsed.y?.toFixed(2)}` }
             }
           },
           scales: {
             x: {
-              ticks: { maxTicksLimit: 6, color: "#6e6e73" },
-              grid: { color: "rgba(0,0,0,0.05)" }
+              ticks: { color: MUTED, maxTicksLimit: 6 },
+              grid: { color: GRID }
             },
             y: {
-              ticks: { color: "#6e6e73" },
-              grid: { color: "rgba(0,0,0,0.05)" }
+              ticks: { color: MUTED },
+              grid: { color: GRID }
             }
           }
         }
       });
     }
 
-    loadData();
+    function formatLabel(dt) {
+      // 1d는 "HH:MM", 그 외 기간은 "MM-DD" 로 보이도록 (단순 규칙)
+      // 실제로는 key를 넘겨 구분해도 됨. 여기선 데이터 밀도에 따라 자동 축소됨.
+      const s = String(dt);
+      if (s.length >= 16) return s.slice(11,16); // HH:MM
+      return s;
+    }
+
+    function hexToRgba(hex, a) {
+      const c = hex.replace('#','');
+      const bigint = parseInt(c.length===3 ? c.split('').map(x=>x+x).join('') : c, 16);
+      const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    load();
   </script>
 </body>
 </html>
