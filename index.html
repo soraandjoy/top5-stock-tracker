@@ -19,7 +19,7 @@
   .title-wrap h1{margin:0;font-size:1.6rem;font-weight:700}
   .subtitle{margin:4px 0 0;color:var(--muted);font-size:.95rem}
   .toolbar{display:flex;align-items:center;gap:12px;color:var(--muted);font-weight:600}
-  .date{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06)} @media (prefers-color-scheme:dark){ .date{background:rgba(255,255,255,.08)} }
+  .pill{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06)} @media (prefers-color-scheme:dark){ .pill{background:rgba(255,255,255,.08)} }
   .updated{color:var(--muted);font-size:.9rem}
   main{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:36px;padding:0 24px 64px;max-width:1240px;margin:0 auto;}
   .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px 18px 26px;transition:.25s}
@@ -44,15 +44,18 @@
       <div class="updated" id="updated">Loading…</div>
     </div>
     <div class="toolbar">
-      <div class="date" id="today"></div>
+      <div class="pill" id="today"></div>
+      <div class="pill" id="snapshotPill" title="ET snapshot window"></div>
     </div>
   </header>
 
   <main id="grid"><p style="text-align:center;grid-column:1/-1">Loading data…</p></main>
-  <footer>Snapshots at 9,10,11,12,13 & close (ET) · Data via Twelve Data</footer>
+  <footer>Snapshots at 9, 10, 11, 12, 13 & close (ET) · Data served from cached snapshots</footer>
 
 <script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxVUCZWU2r78StQjWg3mIWWE9OvAhzTBfaoqHzy-J3MrWChotRvpr5EoEo8-zdKl6j5OQ/exec"; // ← 여기에 Apps Script 웹앱 URL 붙여넣기
+/* ←——————— SET THIS ———————→ */
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxVUCZWU2r78StQjWg3mIWWE9OvAhzTBfaoqHzy-J3MrWChotRvpr5EoEo8-zdKl6j5OQ/exec"; // e.g. https://script.google.com/macros/s/AKfycb.../exec
+/* ←————————————————————————————→ */
 
 const PERIODS = [
   { key:"data_1d", label:"1 day" },
@@ -66,30 +69,36 @@ let PRIMARY = CSS.getPropertyValue('--primary').trim();
 let GRID = CSS.getPropertyValue('--grid').trim();
 let MUTED = CSS.getPropertyValue('--muted').trim();
 
+// Header date
 document.getElementById("today").textContent =
   new Date().toLocaleDateString(undefined,{month:"2-digit",day:"2-digit",year:"numeric"});
 
-// 초기 로딩: 백엔드가 현재 ET 시각에 맞는 버킷 데이터를 자동 응답
+// One-time load of cached snapshot (backend picks current bucket automatically)
 load();
 
 async function load() {
   try{
-    const res = await fetch(WEBAPP_URL + "?_=" + Date.now());
+    const res = await fetch(WEBAPP_URL + "?_=" + Date.now()); // cache-busting
+    if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
     const json = await res.json();
-    const grid = document.getElementById("grid");
-    grid.innerHTML = "";
 
+    // Top meta: last updated & snapshot bucket
     const updated = json.updated_at || (json.date + "T00:00:00Z");
     const bucket = json.bucket || "";
     const bucketLabel = (bucket === "CLOSE") ? "Close" : (bucket ? bucket + ":00" : "");
     document.getElementById("updated").textContent =
       "Last updated: " + new Date(updated).toLocaleString(undefined,{hour12:false}) +
       (bucketLabel ? ` · Snapshot: ${bucketLabel} ET` : "");
+    document.getElementById("snapshotPill").textContent = bucketLabel ? `Snapshot: ${bucketLabel} ET` : "—";
 
+    // Draw cards
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
     (json.stocks || []).forEach((s, idx) => grid.appendChild(makeCard(s, idx)));
   }catch(e){
     console.error(e);
-    document.getElementById("grid").innerHTML = "<p>⚠️ Failed to load data.</p>";
+    document.getElementById("grid").innerHTML =
+      "<p style='text-align:center'>⚠️ Failed to load data</p>";
   }
 }
 
@@ -118,7 +127,7 @@ function makeCard(stock, index){
   });
 
   wrap.append(head, btns, cv);
-  draw(cv, stock, currentKey, change); // 초기 렌더(1 day)
+  draw(cv, stock, currentKey, change); // initial render (1 day)
   return wrap;
 }
 
@@ -128,7 +137,7 @@ function draw(canvas, stock, key, changeEl){
   const labels = dataset.map(p => labelOf(p.Datetime));
   const values = dataset.map(p => p.Close).filter(v => typeof v==="number" && !isNaN(v));
 
-  // 변화율(선택한 기간 기준)
+  // Period change %
   let pct = 0;
   if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
   updateChange(changeEl, pct);
