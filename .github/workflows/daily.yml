@@ -1,36 +1,178 @@
-name: Fetch Selected Stocks Daily
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stock Trends — Tesla, Amazon, Apple, Facebook, Google</title>
 
-on:
-  schedule:
-    - cron: "0 14 * * *"   # 매일 오전 9시 EST
-  workflow_dispatch:
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-permissions:
-  contents: write
+  <style>
+    /* 🩶 Apple 스타일 기반 */
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                   "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background-color: #f5f5f7;
+      color: #1d1d1f;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      text-align: center;
+      padding: 60px 20px 30px;
+    }
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    header p {
+      color: #6e6e73;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 40px;
+      padding: 0 40px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      padding: 24px 24px 32px;
+      transition: transform .3s ease, box-shadow .3s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    }
+    .stock-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .change {
+      font-size: 1rem;
+      color: #0071e3; /* Apple 파랑 */
+      margin-bottom: 20px;
+    }
+    canvas {
+      width: 100%;
+      height: 260px !important; /* 두 개 정도씩 한 화면에 보이게 */
+    }
+    footer {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #86868b;
+      padding: 40px 0;
+    }
+  </style>
+</head>
 
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+<body>
+  <header>
+    <h1>📈 Daily Stock Trends</h1>
+    <p>Tesla · Amazon · Apple · Facebook · Google</p>
+  </header>
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+  <main id="chart-container">
+    <p style="text-align:center; grid-column:1/-1;">Loading data...</p>
+  </main>
 
-      - name: Install dependencies
-        run: |
-          python -m pip install -U pip
-          pip install yfinance pandas
+  <footer>Data updates daily at 9 AM EST · Powered by Yahoo Finance API</footer>
 
-      - name: Fetch selected stocks
-        run: python fetch_selected_stocks.py
+  <script>
+    async function loadData() {
+      const res = await fetch("data/stocks.json?_=" + Date.now());
+      const json = await res.json();
+      const stocks = json.stocks || [];
+      const container = document.getElementById("chart-container");
+      container.innerHTML = "";
 
-      - name: Commit & push data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
-          git commit -m "daily update $(date -u +'%Y-%m-%dT%H:%MZ')" || echo "No changes"
-          git push
+      if (stocks.length === 0) {
+        container.innerHTML = "<p>No stock data available.</p>";
+        return;
+      }
+
+      // 각 주식 카드 생성
+      stocks.forEach((s, i) => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "stock-title";
+        title.textContent = s.name;
+
+        const change = document.createElement("div");
+        change.className = "change";
+        const arrow = s.change >= 0 ? "▲" : "▼";
+        change.style.color = s.change >= 0 ? "#0071e3" : "#d70015"; // Apple blue/red
+        change.textContent = `${arrow} ${s.change}%`;
+
+        const canvas = document.createElement("canvas");
+        canvas.id = `chart-${i}`;
+
+        card.appendChild(title);
+        card.appendChild(change);
+        card.appendChild(canvas);
+        container.appendChild(card);
+
+        drawChart(canvas, s);
+      });
+    }
+
+    function drawChart(canvas, stock) {
+      const data = stock.today_data;
+      const labels = data.map(p => p.Datetime.slice(11, 16)); // 시간만
+      const prices = data.map(p => p.Close);
+
+      new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            data: prices,
+            borderColor: "#0071e3",
+            backgroundColor: "rgba(0,113,227,0.1)",
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: "index",
+              intersect: false,
+              callbacks: {
+                label: ctx => `$${ctx.parsed.y.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 6, color: "#6e6e73" },
+              grid: { color: "rgba(0,0,0,0.05)" }
+            },
+            y: {
+              ticks: { color: "#6e6e73" },
+              grid: { color: "rgba(0,0,0,0.05)" }
+            }
+          }
+        }
+      });
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
