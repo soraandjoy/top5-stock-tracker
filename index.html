@@ -1,280 +1,155 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Stock Trends — TSLA · AMZN · AAPL · META · GOOGL · NVDA</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    /* ========== Design Tokens ========== */
-    :root {
-      --bg: #f5f5f7;
-      --card: #ffffff;
-      --fg: #1d1d1f;
-      --muted: #6e6e73;
-      --shadow: 0 8px 24px rgba(0,0,0,0.08);
-      --shadow-hover: 0 12px 32px rgba(0,0,0,0.1);
-      --primary: #0071e3;   /* apple blue */
-      --danger:  #d70015;   /* apple red  */
-      --ring: rgba(0,113,227,.15);
-      --grid: rgba(0,0,0,0.06);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #000000;
-        --card: #111113;
-        --fg: #f5f5f7;
-        --muted: #a1a1a6;
-        --shadow: 0 8px 24px rgba(0,0,0,0.6);
-        --shadow-hover: 0 12px 32px rgba(0,0,0,0.7);
-        --grid: rgba(255,255,255,0.08);
-        --ring: rgba(0,113,227,.25);
-      }
-    }
-
-    /* ========== Base ========== */
-    html, body {
-      margin: 0; padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-                   "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--fg);
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.55;
-    }
-    header {
-      text-align: center;
-      padding: 56px 20px 22px;
-    }
-    header h1 { margin: 0; font-size: 2.25rem; font-weight: 600; }
-    header p  { margin: 10px 0 0; color: var(--muted); }
-
-    .updated {
-      margin-top: 8px; font-size: 0.95rem; color: var(--muted);
-    }
-
-    main {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-      gap: 36px;
-      padding: 0 36px 72px;
-      max-width: 1240px;
-      margin: 0 auto;
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      padding: 22px 22px 28px;
-      transition: transform .25s ease, box-shadow .25s ease;
-    }
-    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
-
-    .head {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-      margin-bottom: 12px;
-    }
-    .title { font-size: 1.25rem; font-weight: 600; }
-    .change {
-      font-size: 1rem; font-weight: 700;
-    }
-    .period-label { color: var(--muted); font-weight: 600; margin-left: 6px; }
-
-    .btns {
-      display: flex; gap: 8px; flex-wrap: wrap;
-      margin: 8px 0 16px;
-    }
-    .btn {
-      appearance: none; border: 1px solid transparent; background: transparent;
-      color: var(--fg); padding: 6px 10px; border-radius: 999px; cursor: pointer;
-      font-size: .9rem;
-    }
-    .btn:hover { background: rgba(0,0,0,.05); }
-    @media (prefers-color-scheme: dark) { .btn:hover { background: rgba(255,255,255,.08); } }
-    .btn.active {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 6px var(--ring);
-      color: var(--primary);
-      font-weight: 700;
-    }
-
-    canvas { width: 100%; height: 260px !important; }
-
-    footer {
-      text-align: center; color: var(--muted);
-      font-size: .95rem; padding: 36px 0;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Daily Stock Trends — TSLA · AMZN · AAPL · META · GOOGL · NVDA</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root{
+    --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --muted:#6e6e73;
+    --primary:#0071e3; --danger:#d70015; --ring:rgba(0,113,227,.15); --grid:rgba(0,0,0,.06);
+    --shadow:0 8px 24px rgba(0,0,0,.08); --shadow-hover:0 12px 32px rgba(0,0,0,.1);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#000; --card:#111113; --fg:#f5f5f7; --muted:#a1a1a6; --grid:rgba(255,255,255,.08); --shadow:0 8px 24px rgba(0,0,0,.6); --shadow-hover:0 12px 32px rgba(0,0,0,.7);}
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+  header{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:20px 24px 10px;max-width:1240px;margin:0 auto;}
+  .title-wrap h1{margin:0;font-size:1.6rem;font-weight:700}
+  .subtitle{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+  .toolbar{display:flex;align-items:center;gap:12px;color:var(--muted);font-weight:600}
+  .date{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06)} @media (prefers-color-scheme:dark){ .date{background:rgba(255,255,255,.08)} }
+  .updated{color:var(--muted);font-size:.9rem}
+  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:36px;padding:0 24px 64px;max-width:1240px;margin:0 auto;}
+  .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px 18px 26px;transition:.25s}
+  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
+  .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .stock-title{font-size:1.15rem;font-weight:700}
+  .change{font-size:1rem;font-weight:800}
+  .period-label{color:var(--muted);font-weight:700;margin-left:6px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+  .seg{appearance:none;border:1px solid transparent;background:#0000;color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;font-size:.9rem}
+  .seg:hover{background:rgba(0,0,0,.05)} @media (prefers-color-scheme:dark){ .seg:hover{background:rgba(255,255,255,.08)} }
+  .seg.active{border-color:var(--primary);box-shadow:0 0 0 6px var(--ring);color:var(--primary);font-weight:800}
+  canvas{width:100%;height:260px!important}
+  footer{text-align:center;color:var(--muted);padding:20px 0 36px}
+</style>
 </head>
 <body>
   <header>
-    <h1>📈 Daily Stock Trends</h1>
-    <p>Tesla · Amazon · Apple · Facebook · Google · Nvidia</p>
-    <div class="updated" id="updated">업데이트 시간 불러오는 중…</div>
+    <div class="title-wrap">
+      <h1>📈 Daily Stock Trends</h1>
+      <div class="subtitle">TSLA · AMZN · AAPL · META · GOOGL · NVDA</div>
+      <div class="updated" id="updated">Loading…</div>
+    </div>
+    <div class="toolbar">
+      <div class="date" id="today"></div>
+    </div>
   </header>
 
-  <main id="grid">
-    <p style="text-align:center; grid-column:1/-1;">Loading data…</p>
-  </main>
+  <main id="grid"><p style="text-align:center;grid-column:1/-1">Loading data…</p></main>
+  <footer>Snapshots at 9,10,11,12,13 & close (ET) · Data via Twelve Data</footer>
 
-  <footer>Auto-updated daily at 9 AM EST · Yahoo Finance (Chart only)</footer>
+<script>
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby3Uh82hC2WJZqHiRYal_6v2RPO8Ll2aR20YtPej34alPqM3Nn_rjA71U1OmcsYLienBA/exec"; // ← 여기에 Apps Script 웹앱 URL 붙여넣기
 
-  <script>
-    let CSS = getComputedStyle(document.documentElement);
-    let PRIMARY = CSS.getPropertyValue('--primary').trim();
-    let GRID    = CSS.getPropertyValue('--grid').trim();
-    let MUTED   = CSS.getPropertyValue('--muted').trim();
+const PERIODS = [
+  { key:"data_1d", label:"1 day" },
+  { key:"data_1w", label:"1 week" },
+  { key:"data_1m", label:"1 month" },
+  { key:"data_3m", label:"3 months" }
+];
 
-    const PERIODS = [
-      { key: "data_1d", label: "1 DAY" },
-      { key: "data_1w", label: "1 WEEK" },
-      { key: "data_1m", label: "1 MONTH" },
-      { key: "data_3m", label: "3 MONTH" }
-    ];
+let CSS = getComputedStyle(document.documentElement);
+let PRIMARY = CSS.getPropertyValue('--primary').trim();
+let GRID = CSS.getPropertyValue('--grid').trim();
+let MUTED = CSS.getPropertyValue('--muted').trim();
 
-    async function load() {
-      const res = await fetch("data/stocks.json?_=" + Date.now());
-      const json = await res.json();
+document.getElementById("today").textContent =
+  new Date().toLocaleDateString(undefined,{month:"2-digit",day:"2-digit",year:"numeric"});
 
-      // 마지막 업데이트 시간 표시
-      const updated = json.updated_at || (json.date + "T00:00:00Z");
-      const local = new Date(updated);
-      document.getElementById("updated").textContent =
-        "Last updated: " + local.toLocaleString(undefined, {hour12:false});
+// 초기 로딩: 백엔드가 현재 ET 시각에 맞는 버킷 데이터를 자동 응답
+load();
 
-      const grid = document.getElementById("grid");
-      grid.innerHTML = "";
+async function load() {
+  try{
+    const res = await fetch(WEBAPP_URL + "?_=" + Date.now());
+    const json = await res.json();
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
 
-      (json.stocks || []).forEach((s, idx) => {
-        grid.appendChild(makeCard(s, idx));
-      });
-    }
+    const updated = json.updated_at || (json.date + "T00:00:00Z");
+    const bucket = json.bucket || "";
+    const bucketLabel = (bucket === "CLOSE") ? "Close" : (bucket ? bucket + ":00" : "");
+    document.getElementById("updated").textContent =
+      "Last updated: " + new Date(updated).toLocaleString(undefined,{hour12:false}) +
+      (bucketLabel ? ` · Snapshot: ${bucketLabel} ET` : "");
 
-    function makeCard(stock, index) {
-      const wrap = document.createElement("section");
-      wrap.className = "card";
+    (json.stocks || []).forEach((s, idx) => grid.appendChild(makeCard(s, idx)));
+  }catch(e){
+    console.error(e);
+    document.getElementById("grid").innerHTML = "<p>⚠️ Failed to load data.</p>";
+  }
+}
 
-      // 헤더
-      const head = document.createElement("div"); head.className = "head";
-      const title = document.createElement("div"); title.className = "title"; title.textContent = stock.name;
+function makeCard(stock, index){
+  const wrap = el("section","card");
+  const head = el("div","head");
+  const title = el("div","stock-title", stock.name);
+  const change = el("div","change","—%");
+  const periodSpan = el("span","period-label","(1 day)");
+  head.append(title, change, periodSpan);
 
-      const change = document.createElement("div"); change.className = "change";
-      change.textContent = "—%";
+  const btns = el("div","btns");
+  let currentKey = "data_1d";
+  const cv = document.createElement("canvas"); cv.id = `c-${index}`;
 
-      const periodSpan = document.createElement("span");
-      periodSpan.className = "period-label";
-      periodSpan.textContent = "(1 DAY)";
-
-      head.appendChild(title);
-      head.appendChild(change);
-      head.appendChild(periodSpan);
-
-      // 기간 버튼
-      const btns = document.createElement("div"); btns.className = "btns";
-      let currentKey = "data_1d";
-
-      const cv = document.createElement("canvas"); cv.id = `c-${index}`;
-
-      PERIODS.forEach(p => {
-        const b = document.createElement("button");
-        b.className = "btn" + (p.key === currentKey ? " active" : "");
-        b.textContent = p.label;
-        b.onclick = () => {
-          currentKey = p.key;
-          [...btns.querySelectorAll(".btn")].forEach(el => el.classList.remove("active"));
-          b.classList.add("active");
-          periodSpan.textContent = `(${p.label})`;
-          draw(cv, stock, currentKey, change);
-        };
-        btns.appendChild(b);
-      });
-
-      wrap.appendChild(head);
-      wrap.appendChild(btns);
-      wrap.appendChild(cv);
-
-      // 최초 1회(1일) 렌더
+  PERIODS.forEach(p=>{
+    const b = el("button","seg"+(p.key===currentKey?" active":""), p.label);
+    b.onclick = ()=>{
+      currentKey = p.key;
+      [...btns.querySelectorAll(".seg")].forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      periodSpan.textContent = `(${p.label})`;
       draw(cv, stock, currentKey, change);
+    };
+    btns.appendChild(b);
+  });
 
-      return wrap;
+  wrap.append(head, btns, cv);
+  draw(cv, stock, currentKey, change); // 초기 렌더(1 day)
+  return wrap;
+}
+
+function draw(canvas, stock, key, changeEl){
+  const ctx = canvas.getContext("2d");
+  const dataset = normalizeSeries(stock[key] || []);
+  const labels = dataset.map(p => labelOf(p.Datetime));
+  const values = dataset.map(p => p.Close).filter(v => typeof v==="number" && !isNaN(v));
+
+  // 변화율(선택한 기간 기준)
+  let pct = 0;
+  if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
+  updateChange(changeEl, pct);
+
+  if(canvas._chart) canvas._chart.destroy();
+  canvas._chart = new Chart(ctx, {
+    type:"line",
+    data:{ labels, datasets:[{ data:values, borderColor:PRIMARY, backgroundColor:hexToRgba(PRIMARY,.12), borderWidth:2, pointRadius:0, fill:true, tension:.25 }] },
+    options:{
+      plugins:{ legend:{display:false}, tooltip:{mode:"index",intersect:false,callbacks:{label:(c)=>`$${(c.parsed.y??0).toFixed(2)}` }}},
+      scales:{ x:{ticks:{color:MUTED,maxTicksLimit:6},grid:{color:GRID}}, y:{ticks:{color:MUTED},grid:{color:GRID}} }
     }
+  });
+}
 
-    function draw(canvas, stock, key, changeEl) {
-      const ctx = canvas.getContext("2d");
-      const dataset = normalizeSeries(stock[key] || []);
-      const labels = dataset.map(p => formatLabel(p.Datetime));
-      const values = dataset.map(p => p.Close).filter(v => typeof v === "number" && !isNaN(v));
-
-      // 변화율 계산: (마지막 - 처음) / 처음 * 100
-      let pct = 0;
-      if (values.length >= 2 && values[0] !== 0) {
-        pct = ((values[values.length - 1] - values[0]) / values[0]) * 100;
-      }
-      updateChange(changeEl, pct);
-
-      // 기존 차트 제거 후 재생성
-      if (canvas._chart) canvas._chart.destroy();
-
-      canvas._chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            data: values,
-            borderColor: PRIMARY,
-            backgroundColor: hexToRgba(PRIMARY, 0.12),
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: true,
-            tension: 0.25
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              mode: "index", intersect: false,
-              callbacks: { label: ctx => `$${(ctx.parsed.y ?? 0).toFixed(2)}` }
-            }
-          },
-          scales: {
-            x: { ticks: { color: MUTED, maxTicksLimit: 6 }, grid: { color: GRID } },
-            y: { ticks: { color: MUTED }, grid: { color: GRID } }
-          }
-        }
-      });
-    }
-
-    // 유효하지 않은 값 제거(혹시 Close가 null/undefined인 항목)
-    function normalizeSeries(arr) {
-      return (arr || []).filter(p => p && typeof p.Close === "number" && !isNaN(p.Close));
-    }
-
-    function updateChange(el, pct) {
-      const arrow = pct >= 0 ? "▲" : "▼";
-      el.style.color = pct >= 0 ? getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() : "#d70015";
-      el.textContent = `${arrow} ${pct.toFixed(2)}%`;
-    }
-
-    function formatLabel(dt) {
-      const s = String(dt);
-      // 시:분 또는 단순 날짜 (데이터에 따라 자동 축약)
-      if (s.length >= 16) return s.slice(11,16); // HH:MM
-      return s;
-    }
-
-    function hexToRgba(hex, a) {
-      const c = hex.replace('#','');
-      const bigint = parseInt(c.length===3 ? c.split('').map(x=>x+x).join('') : c, 16);
-      const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
-      return `rgba(${r},${g},${b},${a})`;
-    }
-
-    load();
-  </script>
+function normalizeSeries(arr){ return (arr||[]).filter(p=>p && typeof p.Close==="number" && !isNaN(p.Close)); }
+function updateChange(el,pct){ const up=pct>=0; el.style.color = up?PRIMARY:"#d70015"; el.textContent=`${up?"▲":"▼"} ${pct.toFixed(2)}%`; }
+function labelOf(s){ return String(s).length>=16 ? String(s).slice(11,16) : s; }
+function hexToRgba(hex,a){ const c=hex.replace("#",""); const v=parseInt(c.length===3?c.split("").map(x=>x+x).join(""):c,16);
+  return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${a})`; }
+function el(tag,cls,txt){ const n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
+</script>
 </body>
 </html>
