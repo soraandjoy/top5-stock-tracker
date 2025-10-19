@@ -15,7 +15,8 @@ stocks_to_fetch = [
     {"symbol": "AMZN", "name": "Amazon"},
     {"symbol": "AAPL", "name": "Apple"},
     {"symbol": "META", "name": "Facebook"},
-    {"symbol": "GOOGL", "name": "Google"}
+    {"symbol": "GOOGL", "name": "Google"},
+    {"symbol": "NVDA", "name": "Nvidia"}
 ]
 
 results = []
