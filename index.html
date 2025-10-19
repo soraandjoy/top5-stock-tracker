@@ -10,6 +10,7 @@
     --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --muted:#6e6e73;
     --primary:#0071e3; --danger:#d70015; --ring:rgba(0,113,227,.15); --grid:rgba(0,0,0,.06);
     --shadow:0 8px 24px rgba(0,0,0,.08); --shadow-hover:0 12px 32px rgba(0,0,0,.1);
+    --warning:#ffd60a;
   }
   @media (prefers-color-scheme:dark){
     :root{ --bg:#000; --card:#111113; --fg:#f5f5f7; --muted:#a1a1a6; --grid:rgba(255,255,255,.08); --shadow:0 8px 24px rgba(0,0,0,.6); --shadow-hover:0 12px 32px rgba(0,0,0,.7);}
@@ -18,8 +19,9 @@
   header{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:20px 24px 10px;max-width:1240px;margin:0 auto;}
   .title-wrap h1{margin:0;font-size:1.6rem;font-weight:700}
   .subtitle{margin:4px 0 0;color:var(--muted);font-size:.95rem}
-  .toolbar{display:flex;align-items:center;gap:12px;color:var(--muted);font-weight:600}
+  .toolbar{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600;flex-wrap:wrap;justify-content:flex-end}
   .pill{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06)} @media (prefers-color-scheme:dark){ .pill{background:rgba(255,255,255,.08)} }
+  .pill.warn{background:rgba(255,214,10,.2); color:#7a6a00; border:1px solid rgba(255,214,10,.5)}
   .updated{color:var(--muted);font-size:.9rem}
   main{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:36px;padding:0 24px 64px;max-width:1240px;margin:0 auto;}
   .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px 18px 26px;transition:.25s}
@@ -34,6 +36,7 @@
   .seg.active{border-color:var(--primary);box-shadow:0 0 0 6px var(--ring);color:var(--primary);font-weight:800}
   canvas{width:100%;height:260px!important}
   footer{text-align:center;color:var(--muted);padding:20px 0 36px}
+  .note{grid-column:1/-1;text-align:center;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -46,15 +49,16 @@
     <div class="toolbar">
       <div class="pill" id="today"></div>
       <div class="pill" id="snapshotPill" title="ET snapshot window"></div>
+      <div class="pill warn" id="fallbackPill" style="display:none">Weekend/Holiday mode — showing last trading day</div>
     </div>
   </header>
 
-  <main id="grid"><p style="text-align:center;grid-column:1/-1">Loading data…</p></main>
-  <footer>Snapshots at 9, 10, 11, 12, 13 & close (ET) · Data served from cached snapshots</footer>
+  <main id="grid"><p class="note">Loading data…</p></main>
+  <footer>Snapshots at 9, 10, 11, 12, 13 & close (ET) · Uses last valid snapshot on weekends/holidays</footer>
 
 <script>
 /* ←——————— SET THIS ———————→ */
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwnRGAWfLhe5Rw7UaFxd84gd44dwyQPtia7e_5GjOVmvfj3t5YQE2HoXD-63_yaLJ6s6A/exec"; // e.g. https://script.google.com/macros/s/AKfycb.../exec
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbz6637YrL6tD2_Gc8TewF7UyFBGJNDAx13Z7CgxphLtsw0_h81C2kYZ4eU5roH_AG8qTg/exec"; // e.g. https://script.google.com/macros/s/AKfycb.../exec
 /* ←————————————————————————————→ */
 
 const PERIODS = [
@@ -69,37 +73,75 @@ let PRIMARY = CSS.getPropertyValue('--primary').trim();
 let GRID = CSS.getPropertyValue('--grid').trim();
 let MUTED = CSS.getPropertyValue('--muted').trim();
 
-// Header date
+// Header date in local time (browser)
 document.getElementById("today").textContent =
   new Date().toLocaleDateString(undefined,{month:"2-digit",day:"2-digit",year:"numeric"});
 
-// One-time load of cached snapshot (backend picks current bucket automatically)
-load();
+const LS_KEY = "last_stock_snapshot_v1";
 
-async function load() {
+// ---- Load with weekend/holiday fallback (localStorage) ----
+loadWithFallback();
+
+async function loadWithFallback() {
   try{
-    const res = await fetch(WEBAPP_URL + "?_=" + Date.now()); // cache-busting
-    if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
-    const json = await res.json();
-
-    // Top meta: last updated & snapshot bucket
-    const updated = json.updated_at || (json.date + "T00:00:00Z");
-    const bucket = json.bucket || "";
-    const bucketLabel = (bucket === "CLOSE") ? "Close" : (bucket ? bucket + ":00" : "");
-    document.getElementById("updated").textContent =
-      "Last updated: " + new Date(updated).toLocaleString(undefined,{hour12:false}) +
-      (bucketLabel ? ` · Snapshot: ${bucketLabel} ET` : "");
-    document.getElementById("snapshotPill").textContent = bucketLabel ? `Snapshot: ${bucketLabel} ET` : "—";
-
-    // Draw cards
-    const grid = document.getElementById("grid");
-    grid.innerHTML = "";
-    (json.stocks || []).forEach((s, idx) => grid.appendChild(makeCard(s, idx)));
-  }catch(e){
-    console.error(e);
-    document.getElementById("grid").innerHTML =
-      "<p style='text-align:center'>⚠️ Failed to load data</p>";
+    const live = await fetchJson(`${WEBAPP_URL}?_=${Date.now()}`);
+    if (hasStocks(live)) {
+      // render live & cache
+      renderAll(live, /*isFallback*/ false);
+      saveCache(live);
+    } else {
+      // try cache
+      const cached = readCache();
+      if (cached && hasStocks(cached)) {
+        renderAll(cached, /*isFallback*/ true);
+      } else {
+        showFail("No data available yet. Please check back after the first snapshot.");
+      }
+    }
+  } catch (e) {
+    // network error → try cache
+    const cached = readCache();
+    if (cached && hasStocks(cached)) {
+      renderAll(cached, /*isFallback*/ true);
+    } else {
+      showFail("Failed to load data and no cached snapshot found.");
+    }
   }
+}
+
+function hasStocks(json){ return json && Array.isArray(json.stocks) && json.stocks.length>0; }
+function saveCache(json){ try{ localStorage.setItem(LS_KEY, JSON.stringify(json)); }catch(_){} }
+function readCache(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"null"); }catch(_){ return null; } }
+
+async function fetchJson(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const text = await res.text();
+  try{ return JSON.parse(text); }catch(e){ throw new Error("JSON parse error: " + e.message); }
+}
+
+function renderAll(data, isFallback){
+  const updated = data.updated_at || (data.date + "T00:00:00Z");
+  const bucket = data.bucket || "";
+  const bucketLabel = (bucket === "CLOSE") ? "Close" : (bucket ? bucket + ":00" : "");
+  document.getElementById("updated").textContent =
+    "Last updated: " + new Date(updated).toLocaleString(undefined,{hour12:false}) +
+    (bucketLabel ? ` · Snapshot: ${bucketLabel} ET` : "");
+  document.getElementById("snapshotPill").textContent = bucketLabel ? `Snapshot: ${bucketLabel} ET` : "—";
+  document.getElementById("fallbackPill").style.display = isFallback ? "inline-flex" : "none";
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  (data.stocks || []).forEach((s, idx) => grid.appendChild(makeCard(s, idx)));
+
+  if (!data.stocks || data.stocks.length === 0) {
+    grid.innerHTML = "<p class='note'>No data available.</p>";
+  }
+}
+
+function showFail(msg){
+  const grid = document.getElementById("grid");
+  grid.innerHTML = `<p class="note">⚠️ ${msg}</p>`;
 }
 
 function makeCard(stock, index){
@@ -137,7 +179,25 @@ function draw(canvas, stock, key, changeEl){
   const labels = dataset.map(p => labelOf(p.Datetime));
   const values = dataset.map(p => p.Close).filter(v => typeof v==="number" && !isNaN(v));
 
-  // Period change %
+  if(values.length < 2){
+    // 데이터 부족시 간단 안내(카드 내부)
+    if (canvas._chart) canvas._chart.destroy();
+    const msgId = canvas.id + "-nodata";
+    const prev = document.getElementById(msgId);
+    if (!prev) {
+      const note = document.createElement("div");
+      note.id = msgId;
+      note.style.marginTop = "8px";
+      note.style.color = "#a1a1a6";
+      note.style.fontSize = ".9rem";
+      note.textContent = "No data for this period.";
+      canvas.parentElement.appendChild(note);
+    }
+    updateChange(changeEl, 0);
+    return;
+  }
+
+  // 변화율
   let pct = 0;
   if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
   updateChange(changeEl, pct);
@@ -151,11 +211,21 @@ function draw(canvas, stock, key, changeEl){
       scales:{ x:{ticks:{color:MUTED,maxTicksLimit:6},grid:{color:GRID}}, y:{ticks:{color:MUTED},grid:{color:GRID}} }
     }
   });
+
+  // 이전의 "No data" 안내가 남아 있으면 제거
+  const ghost = document.getElementById(canvas.id + "-nodata");
+  if (ghost) ghost.remove();
 }
 
 function normalizeSeries(arr){ return (arr||[]).filter(p=>p && typeof p.Close==="number" && !isNaN(p.Close)); }
 function updateChange(el,pct){ const up=pct>=0; el.style.color = up?PRIMARY:"#d70015"; el.textContent=`${up?"▲":"▼"} ${pct.toFixed(2)}%`; }
-function labelOf(s){ return String(s).length>=16 ? String(s).slice(11,16) : s; }
+function labelOf(s){
+  const str = String(s);
+  // "YYYY-MM-DD HH:mm:ss" → HH:mm (intraday), "YYYY-MM-DD" → MM-DD (daily)
+  if (str.length >= 19 && str[10] === " ") return str.slice(11,16);
+  if (str.length >= 10) return str.slice(5,10);
+  return str;
+}
 function hexToRgba(hex,a){ const c=hex.replace("#",""); const v=parseInt(c.length===3?c.split("").map(x=>x+x).join(""):c,16);
   return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${a})`; }
 function el(tag,cls,txt){ const n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
