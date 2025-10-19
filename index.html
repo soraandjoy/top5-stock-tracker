@@ -10,7 +10,6 @@
     --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --muted:#6e6e73;
     --primary:#0071e3; --danger:#d70015; --ring:rgba(0,113,227,.15); --grid:rgba(0,0,0,.06);
     --shadow:0 8px 24px rgba(0,0,0,.08); --shadow-hover:0 12px 32px rgba(0,0,0,.1);
-    --warning:#ffd60a;
   }
   @media (prefers-color-scheme:dark){
     :root{ --bg:#000; --card:#111113; --fg:#f5f5f7; --muted:#a1a1a6; --grid:rgba(255,255,255,.08); --shadow:0 8px 24px rgba(0,0,0,.6); --shadow-hover:0 12px 32px rgba(0,0,0,.7);}
@@ -28,7 +27,9 @@
   .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
   .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
   .stock-title{font-size:1.15rem;font-weight:700}
+  .metrics{display:flex;gap:10px;align-items:baseline}
   .change{font-size:1rem;font-weight:800}
+  .price{font-size:1rem;font-weight:700;color:var(--muted)}
   .period-label{color:var(--muted);font-weight:700;margin-left:6px}
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
   .seg{appearance:none;border:1px solid transparent;background:#0000;color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;font-size:.9rem}
@@ -86,11 +87,9 @@ async function loadWithFallback() {
   try{
     const live = await fetchJson(`${WEBAPP_URL}?_=${Date.now()}`);
     if (hasStocks(live)) {
-      // render live & cache
       renderAll(live, /*isFallback*/ false);
       saveCache(live);
     } else {
-      // try cache
       const cached = readCache();
       if (cached && hasStocks(cached)) {
         renderAll(cached, /*isFallback*/ true);
@@ -99,7 +98,6 @@ async function loadWithFallback() {
       }
     }
   } catch (e) {
-    // network error → try cache
     const cached = readCache();
     if (cached && hasStocks(cached)) {
       renderAll(cached, /*isFallback*/ true);
@@ -148,9 +146,15 @@ function makeCard(stock, index){
   const wrap = el("section","card");
   const head = el("div","head");
   const title = el("div","stock-title", stock.name);
-  const change = el("div","change","—%");
+
+  // 변경: % + 최신가격을 함께 보여줄 컨테이너
+  const metrics = el("div","metrics");
+  const changeEl = el("div","change","—%");
+  const priceEl  = el("div","price","$—");
+  metrics.append(changeEl, priceEl);
+
   const periodSpan = el("span","period-label","(1 day)");
-  head.append(title, change, periodSpan);
+  head.append(title, metrics, periodSpan);
 
   const btns = el("div","btns");
   let currentKey = "data_1d";
@@ -163,24 +167,35 @@ function makeCard(stock, index){
       [...btns.querySelectorAll(".seg")].forEach(x=>x.classList.remove("active"));
       b.classList.add("active");
       periodSpan.textContent = `(${p.label})`;
-      draw(cv, stock, currentKey, change);
+      draw(cv, stock, currentKey, changeEl, priceEl);
     };
     btns.appendChild(b);
   });
 
   wrap.append(head, btns, cv);
-  draw(cv, stock, currentKey, change); // initial render (1 day)
+  draw(cv, stock, currentKey, changeEl, priceEl); // initial render (1 day)
   return wrap;
 }
 
-function draw(canvas, stock, key, changeEl){
+function draw(canvas, stock, key, changeEl, priceEl){
   const ctx = canvas.getContext("2d");
   const dataset = normalizeSeries(stock[key] || []);
   const labels = dataset.map(p => labelOf(p.Datetime));
   const values = dataset.map(p => p.Close).filter(v => typeof v==="number" && !isNaN(v));
 
+  // 변화율 & 최신가격 계산
+  if(values.length >= 1){
+    const last = values[values.length-1];
+    updatePrice(priceEl, last);
+  } else {
+    priceEl.textContent = "$—";
+  }
+
+  let pct = 0;
+  if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
+  updateChange(changeEl, pct);
+
   if(values.length < 2){
-    // 데이터 부족시 간단 안내(카드 내부)
     if (canvas._chart) canvas._chart.destroy();
     const msgId = canvas.id + "-nodata";
     const prev = document.getElementById(msgId);
@@ -193,14 +208,8 @@ function draw(canvas, stock, key, changeEl){
       note.textContent = "No data for this period.";
       canvas.parentElement.appendChild(note);
     }
-    updateChange(changeEl, 0);
     return;
   }
-
-  // 변화율
-  let pct = 0;
-  if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
-  updateChange(changeEl, pct);
 
   if(canvas._chart) canvas._chart.destroy();
   canvas._chart = new Chart(ctx, {
@@ -212,18 +221,17 @@ function draw(canvas, stock, key, changeEl){
     }
   });
 
-  // 이전의 "No data" 안내가 남아 있으면 제거
   const ghost = document.getElementById(canvas.id + "-nodata");
   if (ghost) ghost.remove();
 }
 
 function normalizeSeries(arr){ return (arr||[]).filter(p=>p && typeof p.Close==="number" && !isNaN(p.Close)); }
 function updateChange(el,pct){ const up=pct>=0; el.style.color = up?PRIMARY:"#d70015"; el.textContent=`${up?"▲":"▼"} ${pct.toFixed(2)}%`; }
+function updatePrice(el, last){ el.textContent = `$${Number(last).toFixed(2)}`; }
 function labelOf(s){
   const str = String(s);
-  // "YYYY-MM-DD HH:mm:ss" → HH:mm (intraday), "YYYY-MM-DD" → MM-DD (daily)
-  if (str.length >= 19 && str[10] === " ") return str.slice(11,16);
-  if (str.length >= 10) return str.slice(5,10);
+  if (str.length >= 19 && str[10] === " ") return str.slice(11,16); // HH:mm
+  if (str.length >= 10) return str.slice(5,10);                     // MM-DD
   return str;
 }
 function hexToRgba(hex,a){ const c=hex.replace("#",""); const v=parseInt(c.length===3?c.split("").map(x=>x+x).join(""):c,16);
