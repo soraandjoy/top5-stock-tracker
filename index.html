@@ -80,8 +80,9 @@
     }
     .title { font-size: 1.25rem; font-weight: 600; }
     .change {
-      font-size: 1rem; font-weight: 600;
+      font-size: 1rem; font-weight: 700;
     }
+    .period-label { color: var(--muted); font-weight: 600; margin-left: 6px; }
 
     .btns {
       display: flex; gap: 8px; flex-wrap: wrap;
@@ -123,9 +124,17 @@
   <footer>Auto-updated daily at 9 AM EST · Yahoo Finance (Chart only)</footer>
 
   <script>
-    let PRIMARY = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-    let GRID    = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
-    let MUTED   = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
+    let CSS = getComputedStyle(document.documentElement);
+    let PRIMARY = CSS.getPropertyValue('--primary').trim();
+    let GRID    = CSS.getPropertyValue('--grid').trim();
+    let MUTED   = CSS.getPropertyValue('--muted').trim();
+
+    const PERIODS = [
+      { key: "data_1d", label: "1일" },
+      { key: "data_1w", label: "1주" },
+      { key: "data_1m", label: "1달" },
+      { key: "data_3m", label: "3달" }
+    ];
 
     async function load() {
       const res = await fetch("data/stocks.json?_=" + Date.now());
@@ -152,26 +161,25 @@
       // 헤더
       const head = document.createElement("div"); head.className = "head";
       const title = document.createElement("div"); title.className = "title"; title.textContent = stock.name;
+
       const change = document.createElement("div"); change.className = "change";
-      const arrow = (stock.change ?? 0) >= 0 ? "▲" : "▼";
-      change.style.color = (stock.change ?? 0) >= 0 ? PRIMARY : "#d70015";
-      change.textContent = `${arrow} ${Number(stock.change ?? 0).toFixed(2)}%`;
-      head.appendChild(title); head.appendChild(change);
+      change.textContent = "—%";
+
+      const periodSpan = document.createElement("span");
+      periodSpan.className = "period-label";
+      periodSpan.textContent = "(1일)";
+
+      head.appendChild(title);
+      head.appendChild(change);
+      head.appendChild(periodSpan);
 
       // 기간 버튼
       const btns = document.createElement("div"); btns.className = "btns";
-      const periods = [
-        { key: "data_1d", label: "1 DAY" },
-        { key: "data_1w", label: "1 WEEK" },
-        { key: "data_1m", label: "1 MONTH" },
-        { key: "data_3m", label: "3 MONTH" }
-      ];
       let currentKey = "data_1d";
 
       const cv = document.createElement("canvas"); cv.id = `c-${index}`;
 
-      // 버튼들 추가
-      periods.forEach(p => {
+      PERIODS.forEach(p => {
         const b = document.createElement("button");
         b.className = "btn" + (p.key === currentKey ? " active" : "");
         b.textContent = p.label;
@@ -179,7 +187,8 @@
           currentKey = p.key;
           [...btns.querySelectorAll(".btn")].forEach(el => el.classList.remove("active"));
           b.classList.add("active");
-          draw(cv, stock, currentKey);
+          periodSpan.textContent = `(${p.label})`;
+          draw(cv, stock, currentKey, change);
         };
         btns.appendChild(b);
       });
@@ -188,20 +197,27 @@
       wrap.appendChild(btns);
       wrap.appendChild(cv);
 
-      // 최초 1회: 1일 차트
-      draw(cv, stock, currentKey);
+      // 최초 1회(1일) 렌더
+      draw(cv, stock, currentKey, change);
 
       return wrap;
     }
 
-    function draw(canvas, stock, key) {
+    function draw(canvas, stock, key, changeEl) {
       const ctx = canvas.getContext("2d");
-      const dataset = stock[key] || [];
+      const dataset = normalizeSeries(stock[key] || []);
       const labels = dataset.map(p => formatLabel(p.Datetime));
-      const values = dataset.map(p => p.Close);
+      const values = dataset.map(p => p.Close).filter(v => typeof v === "number" && !isNaN(v));
 
-      // 기존 차트 제거
-      if (canvas._chart) { canvas._chart.destroy(); }
+      // 변화율 계산: (마지막 - 처음) / 처음 * 100
+      let pct = 0;
+      if (values.length >= 2 && values[0] !== 0) {
+        pct = ((values[values.length - 1] - values[0]) / values[0]) * 100;
+      }
+      updateChange(changeEl, pct);
+
+      // 기존 차트 제거 후 재생성
+      if (canvas._chart) canvas._chart.destroy();
 
       canvas._chart = new Chart(ctx, {
         type: "line",
@@ -222,27 +238,31 @@
             legend: { display: false },
             tooltip: {
               mode: "index", intersect: false,
-              callbacks: { label: ctx => `$${ctx.parsed.y?.toFixed(2)}` }
+              callbacks: { label: ctx => `$${(ctx.parsed.y ?? 0).toFixed(2)}` }
             }
           },
           scales: {
-            x: {
-              ticks: { color: MUTED, maxTicksLimit: 6 },
-              grid: { color: GRID }
-            },
-            y: {
-              ticks: { color: MUTED },
-              grid: { color: GRID }
-            }
+            x: { ticks: { color: MUTED, maxTicksLimit: 6 }, grid: { color: GRID } },
+            y: { ticks: { color: MUTED }, grid: { color: GRID } }
           }
         }
       });
     }
 
+    // 유효하지 않은 값 제거(혹시 Close가 null/undefined인 항목)
+    function normalizeSeries(arr) {
+      return (arr || []).filter(p => p && typeof p.Close === "number" && !isNaN(p.Close));
+    }
+
+    function updateChange(el, pct) {
+      const arrow = pct >= 0 ? "▲" : "▼";
+      el.style.color = pct >= 0 ? getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() : "#d70015";
+      el.textContent = `${arrow} ${pct.toFixed(2)}%`;
+    }
+
     function formatLabel(dt) {
-      // 1d는 "HH:MM", 그 외 기간은 "MM-DD" 로 보이도록 (단순 규칙)
-      // 실제로는 key를 넘겨 구분해도 됨. 여기선 데이터 밀도에 따라 자동 축소됨.
       const s = String(dt);
+      // 시:분 또는 단순 날짜 (데이터에 따라 자동 축약)
       if (s.length >= 16) return s.slice(11,16); // HH:MM
       return s;
     }
