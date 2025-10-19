@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* 🩶 Apple 스타일 기반 */
+    /* Apple 스타일 기반 디자인 */
     html, body {
       margin: 0;
       padding: 0;
@@ -60,12 +60,12 @@
     }
     .change {
       font-size: 1rem;
-      color: #0071e3; /* Apple 파랑 */
+      color: #0071e3; /* 상승 시 파랑, 하락 시 빨강 */
       margin-bottom: 20px;
     }
     canvas {
       width: 100%;
-      height: 260px !important; /* 두 개 정도씩 한 화면에 보이게 */
+      height: 260px !important;
     }
     footer {
       text-align: center;
@@ -89,48 +89,59 @@
   <footer>Data updates daily at 9 AM EST · Powered by Yahoo Finance API</footer>
 
   <script>
+    // ✅ data/stocks.json 파일 불러오기
     async function loadData() {
-      const res = await fetch("data/stocks.json?_=" + Date.now());
-      const json = await res.json();
-      const stocks = json.stocks || [];
-      const container = document.getElementById("chart-container");
-      container.innerHTML = "";
+      try {
+        const res = await fetch("data/stocks.json?_=" + Date.now()); // 캐시 방지
+        const json = await res.json();
+        const stocks = json.stocks || [];
 
-      if (stocks.length === 0) {
-        container.innerHTML = "<p>No stock data available.</p>";
-        return;
+        const container = document.getElementById("chart-container");
+        container.innerHTML = "";
+
+        if (stocks.length === 0) {
+          container.innerHTML = "<p>No stock data available.</p>";
+          return;
+        }
+
+        // 각 주식별 카드 생성
+        stocks.forEach((s, i) => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const title = document.createElement("div");
+          title.className = "stock-title";
+          title.textContent = s.name;
+
+          const change = document.createElement("div");
+          change.className = "change";
+          const arrow = s.change >= 0 ? "▲" : "▼";
+          change.style.color = s.change >= 0 ? "#0071e3" : "#d70015";
+          change.textContent = `${arrow} ${s.change}%`;
+
+          const canvas = document.createElement("canvas");
+          canvas.id = `chart-${i}`;
+
+          card.appendChild(title);
+          card.appendChild(change);
+          card.appendChild(canvas);
+          container.appendChild(card);
+
+          drawChart(canvas, s);
+        });
+      } catch (err) {
+        console.error("Error loading JSON:", err);
+        document.getElementById("chart-container").innerHTML =
+          "<p>⚠️ 데이터를 불러오는 중 오류가 발생했습니다.</p>";
       }
-
-      // 각 주식 카드 생성
-      stocks.forEach((s, i) => {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const title = document.createElement("div");
-        title.className = "stock-title";
-        title.textContent = s.name;
-
-        const change = document.createElement("div");
-        change.className = "change";
-        const arrow = s.change >= 0 ? "▲" : "▼";
-        change.style.color = s.change >= 0 ? "#0071e3" : "#d70015"; // Apple blue/red
-        change.textContent = `${arrow} ${s.change}%`;
-
-        const canvas = document.createElement("canvas");
-        canvas.id = `chart-${i}`;
-
-        card.appendChild(title);
-        card.appendChild(change);
-        card.appendChild(canvas);
-        container.appendChild(card);
-
-        drawChart(canvas, s);
-      });
     }
 
+    // ✅ 차트 그리기
     function drawChart(canvas, stock) {
       const data = stock.today_data;
-      const labels = data.map(p => p.Datetime.slice(11, 16)); // 시간만
+      if (!data || data.length === 0) return;
+
+      const labels = data.map(p => p.Datetime.slice(11, 16)); // HH:MM 형태
       const prices = data.map(p => p.Close);
 
       new Chart(canvas.getContext("2d"), {
