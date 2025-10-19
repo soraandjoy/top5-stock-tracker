@@ -1,1 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>오늘의 상승률 상위 5개 주식</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Chart.js (그래프 라이브러리) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      background: #fafafa;
+      margin: 0;
+      padding: 2rem;
+      text-align: center;
+    }
+    h1 { margin-bottom: 1rem; }
+    #stock-list button {
+      margin: .25rem;
+      padding: .5rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    #stock-list button:hover {
+      background: #007bff;
+      color: white;
+    }
+    canvas {
+      margin-top: 2rem;
+      max-width: 700px;
+      width: 90%;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    #chart-title {
+      margin-top: 1.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>📈 오늘의 상승률 상위 5개 주식</h1>
 
+  <!-- 버튼 영역 -->
+  <div id="stock-list">불러오는 중...</div>
+
+  <!-- 선택된 주식 이름 -->
+  <div id="chart-title"></div>
+
+  <!-- 그래프 -->
+  <canvas id="chart"></canvas>
+
+  <script>
+    let chart;
+
+    async function loadData() {
+      const res = await fetch("data/top5.json?_=" + Date.now()); // 캐시 방지
+      const json = await res.json();
+      const stocks = json.top5;
+
+      const list = document.getElementById("stock-list");
+      list.innerHTML = "";
+      stocks.forEach(s => {
+        const btn = document.createElement("button");
+        btn.textContent = `${s.symbol} (${s.change}%)`;
+        btn.onclick = () => drawChart(s);
+        list.appendChild(btn);
+      });
+
+      // 첫 번째 주식 자동 표시
+      if (stocks.length > 0) drawChart(stocks[0]);
+    }
+
+    function drawChart(stock) {
+      const ctx = document.getElementById("chart").getContext("2d");
+      const title = document.getElementById("chart-title");
+      title.textContent = `${stock.symbol} - 오늘의 1일 변동 그래프`;
+
+      const data = stock.today_data;
+      const labels = data.map(p => p.Datetime.slice(11,16)); // 시:분만 표시
+      const prices = data.map(p => p.Close);
+
+      if (chart) chart.destroy(); // 기존 그래프 제거
+
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: `${stock.symbol} 주가`,
+            data: prices,
+            borderColor: "#007bff",
+            backgroundColor: "rgba(0,123,255,0.1)",
+            tension: 0.25,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { display: true, title: { display: true, text: "시간" }},
+            y: { display: true, title: { display: true, text: "가격 (USD)" }}
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
