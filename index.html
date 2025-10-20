@@ -4,27 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Top 5 Stock Tracker</title>
-<meta name="description" content="Daily Top 5 Stock Tracker — always fresh with cache-busting" />
 <style>
   :root{
     --bg:#0b0d10; --card:#11151b; --text:#e8eef7; --muted:#9fb3c8; --accent:#7dd3fc;
     --border:#1f2a37; --up:#16a34a; --down:#ef4444;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  body{margin:0;background:var(--bg);color:var(--text);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,sans-serif}
-  a{color:inherit;text-decoration:none}
-  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);
-    background:rgba(11,13,16,.75);border-bottom:1px solid var(--border)}
   .wrap{max-width:980px;margin:0 auto;padding:0 16px}
-  .nav{display:flex;align-items:center;justify-content:space-between;height:62px}
-  .brand{font-weight:800;letter-spacing:.3px}
+  header{position:sticky;top:0;background:rgba(11,13,16,.75);
+    border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{font-weight:800;font-size:20px}
   main{padding:24px 0 56px}
   h1{font-size:26px;margin:10px 0 6px}
   .muted{color:var(--muted)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:14px; padding:14px}
-  .sym{font-weight:800;font-size:18px;letter-spacing:.4px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .sym{font-weight:800;font-size:18px}
   .name{font-size:12px;color:var(--muted);margin-top:2px}
   .row{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
   .price{font-size:22px;font-weight:700}
@@ -57,109 +55,89 @@
     </div>
 
     <div class="footer">
-      <div id="updatedAt" class="muted"></div>
-      <div id="note" class="muted" style="margin-top:6px"></div>
+      <div id="updatedAt"></div>
+      <div id="note" style="margin-top:6px"></div>
     </div>
   </main>
 
 <script>
-/** CONFIG: 레포/브랜치 */
-const OWNER  = "soraandjoy";
-const REPO   = "top5-stock-tracker";        // 이 페이지가 있는 레포명
-const BRANCH = "main";
+/* =====================================================
+   🟢🟢🟢 아래 CONFIG에서 본인 레포 / 브랜치 설정 🟢🟢🟢
+===================================================== */
+const OWNER  = "soraandjoy";           // 깃허브 아이디
+const REPO   = "top5-stock-tracker";   // 저장소 이름
+const BRANCH = "main";                 // 브랜치
+/* ===================================================== */
 
-/** 데이터 파일 경로: fetch_top5.py가 만드는 최신본 */
+/* 🔗 최신 데이터(JSON) 위치 (fetch_top5.py가 만듦) */
 const LATEST_PATH = "data/latest.json";
 
-/** raw.githubusercontent URL + 캐시 바스터 */
+/* 🔗 raw.githubusercontent 링크 생성 + 캐시 무력화 */
 const rawUrl = (path) => `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`;
 const bust   = () => `t=${Date.now()}`;
 
-/** ET(미 동부) 현재시간 문자열 */
+/* 📅 미국 동부시간(ET) 표시 */
 function nowETString() {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: false
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false
   }).format(new Date());
 }
-function todayETISO() {
-  const f = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit"
-  });
-  // en-CA → YYYY-MM-DD
-  return f.format(new Date());
+function todayETISO(){
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"
+  }).format(new Date());
 }
 
-/** GET JSON (강제 최신) */
+/* 📡 fetch JSON (캐시 무시) */
 async function getJSONLatest(path){
   const url = `${rawUrl(path)}?${bust()}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url,{cache:"no-store"});
   if(!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-/** 렌더 */
+/* 💹 화면 렌더링 */
 function renderItems(list){
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
+  const grid=document.getElementById("grid");
+  grid.innerHTML="";
   list.slice(0,5).forEach(item=>{
-    const chg = Number(item.changePct ?? 0);
-    const up  = chg >= 0;
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerHTML = `
-      <div class="sym">${item.symbol ?? "-"}</div>
-      <div class="name">${item.name ?? ""}</div>
+    const chg=Number(item.changePct??0);
+    const up=chg>=0;
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`
+      <div class="sym">${item.symbol??"-"}</div>
+      <div class="name">${item.name??""}</div>
       <div class="row">
-        <div class="price">$${Number(item.price ?? 0).toFixed(2)}</div>
-        <div class="chg ${up ? "up":"down"}">${up?"+":""}${chg.toFixed(2)}%</div>
-      </div>
-    `;
+        <div class="price">$${Number(item.price??0).toFixed(2)}</div>
+        <div class="chg ${up?"up":"down"}">${up?"+":""}${chg.toFixed(2)}%</div>
+      </div>`;
     grid.appendChild(div);
   });
 }
 
-/** 메인 */
+/* 🚀 메인 실행 */
 (async function boot(){
-  const statusEl  = document.getElementById("status");
-  const updatedEl = document.getElementById("updatedAt");
-  const noteEl    = document.getElementById("note");
-
+  const status=document.getElementById("status");
+  const updated=document.getElementById("updatedAt");
+  const note=document.getElementById("note");
   try{
-    statusEl.textContent = "Fetching latest…";
-    const data = await getJSONLatest(LATEST_PATH);
-
-    // data.updatedAt(ms) 또는 data.date(YYYY-MM-DD) 표기
-    let stamp = "";
-    if (typeof data.updatedAt === "number") {
-      const d = new Date(data.updatedAt);
-      stamp = d.toLocaleString();
-    } else if (typeof data.date === "string") {
-      stamp = data.date + " (ET)";
-    }
-    updatedEl.textContent = `Updated: ${stamp} | Now(ET): ${nowETString()}`;
-
-    // 오늘 데이터인지 간단 점검 (ET 기준)
-    const todayET = todayETISO();               // 'YYYY-MM-DD'
-    const isToday = (data.date === todayET);
-    noteEl.textContent = isToday ? "" :
-      `참고: 최신 스냅샷의 날짜가 오늘(${todayET})과 다릅니다. (data.date=${data.date})`;
-
-    renderItems(data.items || []);
-    statusEl.textContent = isToday ? "Live" : "Snapshot";
-
+    status.textContent="Fetching…";
+    const data=await getJSONLatest(LATEST_PATH);
+    const today=todayETISO();
+    const isToday=(data.date===today);
+    renderItems(data.items||[]);
+    updated.textContent=`Updated: ${data.date||""} | Now(ET): ${nowETString()}`;
+    note.textContent=isToday?"":`참고: 최신 스냅샷이 오늘(${today})과 다릅니다.`;
+    status.textContent=isToday?"Live":"Snapshot";
   }catch(e){
-    statusEl.textContent = "Error";
-    const grid = document.getElementById("grid");
-    grid.innerHTML = `<div class="center" style="grid-column:1/-1">
-      <div>
-        <div class="muted" style="margin-bottom:6px">데이터를 불러오지 못했습니다.</div>
-        <code>${String(e.message || e)}</code>
-      </div>
-    </div>`;
+    status.textContent="Error";
+    document.getElementById("grid").innerHTML=
+      `<div class='center' style='grid-column:1/-1'>
+         <div class='muted'>데이터를 불러오지 못했습니다.<br><code>${e.message}</code></div>
+       </div>`;
   }
 })();
 </script>
