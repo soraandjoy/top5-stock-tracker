@@ -1,242 +1,167 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Daily Stock Trends — TSLA · AMZN · AAPL · META · GOOGL · NVDA</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Top 5 Stock Tracker</title>
+<meta name="description" content="Daily Top 5 Stock Tracker — always fresh with cache-busting" />
 <style>
   :root{
-    --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --muted:#6e6e73;
-    --primary:#0071e3; --danger:#d70015; --ring:rgba(0,113,227,.15); --grid:rgba(0,0,0,.06);
-    --shadow:0 8px 24px rgba(0,0,0,.08); --shadow-hover:0 12px 32px rgba(0,0,0,.1);
+    --bg:#0b0d10; --card:#11151b; --text:#e8eef7; --muted:#9fb3c8; --accent:#7dd3fc;
+    --border:#1f2a37; --up:#16a34a; --down:#ef4444;
   }
-  @media (prefers-color-scheme:dark){
-    :root{ --bg:#000; --card:#111113; --fg:#f5f5f7; --muted:#a1a1a6; --grid:rgba(255,255,255,.08); --shadow:0 8px 24px rgba(0,0,0,.6); --shadow-hover:0 12px 32px rgba(0,0,0,.7);}
-  }
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
-  header{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:20px 24px 10px;max-width:1240px;margin:0 auto;}
-  .title-wrap h1{margin:0;font-size:1.6rem;font-weight:700}
-  .subtitle{margin:4px 0 0;color:var(--muted);font-size:.95rem}
-  .toolbar{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600;flex-wrap:wrap;justify-content:flex-end}
-  .pill{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06)} @media (prefers-color-scheme:dark){ .pill{background:rgba(255,255,255,.08)} }
-  .pill.warn{background:rgba(255,214,10,.2); color:#7a6a00; border:1px solid rgba(255,214,10,.5)}
-  .updated{color:var(--muted);font-size:.9rem}
-  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:36px;padding:0 24px 64px;max-width:1240px;margin:0 auto;}
-  .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px 18px 26px;transition:.25s}
-  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
-  .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
-  .stock-title{font-size:1.15rem;font-weight:700}
-  .metrics{display:flex;gap:10px;align-items:baseline}
-  .change{font-size:1rem;font-weight:800}
-  .price{font-size:1rem;font-weight:700;color:var(--muted)}
-  .period-label{color:var(--muted);font-weight:700;margin-left:6px}
-  .btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
-  .seg{appearance:none;border:1px solid transparent;background:#0000;color:var(--fg);padding:6px 10px;border-radius:999px;cursor:pointer;font-size:.9rem}
-  .seg:hover{background:rgba(0,0,0,.05)} @media (prefers-color-scheme:dark){ .seg:hover{background:rgba(255,255,255,.08)} }
-  .seg.active{border-color:var(--primary);box-shadow:0 0 0 6px var(--ring);color:var(--primary);font-weight:800}
-  canvas{width:100%;height:260px!important}
-  footer{text-align:center;color:var(--muted);padding:20px 0 36px}
-  .note{grid-column:1/-1;text-align:center;color:var(--muted)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,sans-serif}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);
+    background:rgba(11,13,16,.75);border-bottom:1px solid var(--border)}
+  .wrap{max-width:980px;margin:0 auto;padding:0 16px}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{font-weight:800;letter-spacing:.3px}
+  main{padding:24px 0 56px}
+  h1{font-size:26px;margin:10px 0 6px}
+  .muted{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px; padding:14px}
+  .sym{font-weight:800;font-size:18px;letter-spacing:.4px}
+  .name{font-size:12px;color:var(--muted);margin-top:2px}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+  .price{font-size:22px;font-weight:700}
+  .chg{font-weight:700}
+  .up{color:var(--up)}
+  .down{color:var(--down)}
+  .footer{margin-top:18px;border-top:1px solid var(--border);padding-top:12px;color:var(--muted);font-size:12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);
+    background:#0f141b;border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+  .center{display:flex;align-items:center;justify-content:center;min-height:120px}
+  .spinner{width:28px;height:28px;border:3px solid #1f2a37;border-top-color:var(--accent);
+    border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
   <header>
-    <div class="title-wrap">
-      <h1>📈 Daily Stock Trends</h1>
-      <div class="subtitle">TSLA · AMZN · AAPL · META · GOOGL · NVDA</div>
-      <div class="updated" id="updated">Loading…</div>
-    </div>
-    <div class="toolbar">
-      <div class="pill" id="today"></div>
-      <div class="pill" id="snapshotPill" title="ET snapshot window"></div>
-      <div class="pill warn" id="fallbackPill" style="display:none">Weekend/Holiday mode — showing last trading day</div>
+    <div class="wrap nav">
+      <div class="brand">Top 5 Stock Tracker</div>
+      <div class="pill" id="status">Loading…</div>
     </div>
   </header>
 
-  <main id="grid"><p class="note">Loading data…</p></main>
-  <footer>Snapshots at 9, 10, 11, 12, 13 & close (ET) · Uses last valid snapshot on weekends/holidays</footer>
+  <main class="wrap">
+    <h1>오늘의 TOP 5</h1>
+    <div class="muted">미 동부시간(ET) 기준으로 최신 데이터를 표시합니다.</div>
+
+    <div id="grid" class="grid">
+      <div class="center" style="grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+
+    <div class="footer">
+      <div id="updatedAt" class="muted"></div>
+      <div id="note" class="muted" style="margin-top:6px"></div>
+    </div>
+  </main>
 
 <script>
-/* ←——————— SET THIS ———————→ */
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwACq7RUHXNYDv6Qod_mSGjhzSIjatJZz4_2h-Lw5aRkuwSlIeAIJqlPQuxxrBnlsVGGw/exec"; // e.g. https://script.google.com/macros/s/AKfycb.../exec
-/* ←————————————————————————————→ */
+/** CONFIG: 레포/브랜치 */
+const OWNER  = "soraandjoy";
+const REPO   = "top5-stock-tracker";        // 이 페이지가 있는 레포명
+const BRANCH = "main";
 
-const PERIODS = [
-  { key:"data_1d", label:"1 day" },
-  { key:"data_1w", label:"1 week" },
-  { key:"data_1m", label:"1 month" },
-  { key:"data_3m", label:"3 months" }
-];
+/** 데이터 파일 경로: fetch_top5.py가 만드는 최신본 */
+const LATEST_PATH = "data/latest.json";
 
-let CSS = getComputedStyle(document.documentElement);
-let PRIMARY = CSS.getPropertyValue('--primary').trim();
-let GRID = CSS.getPropertyValue('--grid').trim();
-let MUTED = CSS.getPropertyValue('--muted').trim();
+/** raw.githubusercontent URL + 캐시 바스터 */
+const rawUrl = (path) => `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`;
+const bust   = () => `t=${Date.now()}`;
 
-// Header date in local time (browser)
-document.getElementById("today").textContent =
-  new Date().toLocaleDateString(undefined,{month:"2-digit",day:"2-digit",year:"numeric"});
-
-const LS_KEY = "last_stock_snapshot_v1";
-
-// ---- Load with weekend/holiday fallback (localStorage) ----
-loadWithFallback();
-
-async function loadWithFallback() {
-  try{
-    const live = await fetchJson(`${WEBAPP_URL}?_=${Date.now()}`);
-    if (hasStocks(live)) {
-      renderAll(live, /*isFallback*/ false);
-      saveCache(live);
-    } else {
-      const cached = readCache();
-      if (cached && hasStocks(cached)) {
-        renderAll(cached, /*isFallback*/ true);
-      } else {
-        showFail("No data available yet. Please check back after the first snapshot.");
-      }
-    }
-  } catch (e) {
-    const cached = readCache();
-    if (cached && hasStocks(cached)) {
-      renderAll(cached, /*isFallback*/ true);
-    } else {
-      showFail("Failed to load data and no cached snapshot found.");
-    }
-  }
+/** ET(미 동부) 현재시간 문자열 */
+function nowETString() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false
+  }).format(new Date());
+}
+function todayETISO() {
+  const f = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit"
+  });
+  // en-CA → YYYY-MM-DD
+  return f.format(new Date());
 }
 
-function hasStocks(json){ return json && Array.isArray(json.stocks) && json.stocks.length>0; }
-function saveCache(json){ try{ localStorage.setItem(LS_KEY, JSON.stringify(json)); }catch(_){} }
-function readCache(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"null"); }catch(_){ return null; } }
-
-async function fetchJson(url){
-  const res = await fetch(url);
-  if(!res.ok) throw new Error("HTTP " + res.status);
-  const text = await res.text();
-  try{ return JSON.parse(text); }catch(e){ throw new Error("JSON parse error: " + e.message); }
+/** GET JSON (강제 최신) */
+async function getJSONLatest(path){
+  const url = `${rawUrl(path)}?${bust()}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
-function renderAll(data, isFallback){
-  const updated = data.updated_at || (data.date + "T00:00:00Z");
-  const bucket = data.bucket || "";
-  const bucketLabel = (bucket === "CLOSE") ? "Close" : (bucket ? bucket + ":00" : "");
-  document.getElementById("updated").textContent =
-    "Last updated: " + new Date(updated).toLocaleString(undefined,{hour12:false}) +
-    (bucketLabel ? ` · Snapshot: ${bucketLabel} ET` : "");
-  document.getElementById("snapshotPill").textContent = bucketLabel ? `Snapshot: ${bucketLabel} ET` : "—";
-  document.getElementById("fallbackPill").style.display = isFallback ? "inline-flex" : "none";
-
+/** 렌더 */
+function renderItems(list){
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
-  (data.stocks || []).forEach((s, idx) => grid.appendChild(makeCard(s, idx)));
-
-  if (!data.stocks || data.stocks.length === 0) {
-    grid.innerHTML = "<p class='note'>No data available.</p>";
-  }
-}
-
-function showFail(msg){
-  const grid = document.getElementById("grid");
-  grid.innerHTML = `<p class="note">⚠️ ${msg}</p>`;
-}
-
-function makeCard(stock, index){
-  const wrap = el("section","card");
-  const head = el("div","head");
-  const title = el("div","stock-title", stock.name);
-
-  // 변경: % + 최신가격을 함께 보여줄 컨테이너
-  const metrics = el("div","metrics");
-  const changeEl = el("div","change","—%");
-  const priceEl  = el("div","price","$—");
-  metrics.append(changeEl, priceEl);
-
-  const periodSpan = el("span","period-label","(1 day)");
-  head.append(title, metrics, periodSpan);
-
-  const btns = el("div","btns");
-  let currentKey = "data_1d";
-  const cv = document.createElement("canvas"); cv.id = `c-${index}`;
-
-  PERIODS.forEach(p=>{
-    const b = el("button","seg"+(p.key===currentKey?" active":""), p.label);
-    b.onclick = ()=>{
-      currentKey = p.key;
-      [...btns.querySelectorAll(".seg")].forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      periodSpan.textContent = `(${p.label})`;
-      draw(cv, stock, currentKey, changeEl, priceEl);
-    };
-    btns.appendChild(b);
+  list.slice(0,5).forEach(item=>{
+    const chg = Number(item.changePct ?? 0);
+    const up  = chg >= 0;
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <div class="sym">${item.symbol ?? "-"}</div>
+      <div class="name">${item.name ?? ""}</div>
+      <div class="row">
+        <div class="price">$${Number(item.price ?? 0).toFixed(2)}</div>
+        <div class="chg ${up ? "up":"down"}">${up?"+":""}${chg.toFixed(2)}%</div>
+      </div>
+    `;
+    grid.appendChild(div);
   });
-
-  wrap.append(head, btns, cv);
-  draw(cv, stock, currentKey, changeEl, priceEl); // initial render (1 day)
-  return wrap;
 }
 
-function draw(canvas, stock, key, changeEl, priceEl){
-  const ctx = canvas.getContext("2d");
-  const dataset = normalizeSeries(stock[key] || []);
-  const labels = dataset.map(p => labelOf(p.Datetime));
-  const values = dataset.map(p => p.Close).filter(v => typeof v==="number" && !isNaN(v));
+/** 메인 */
+(async function boot(){
+  const statusEl  = document.getElementById("status");
+  const updatedEl = document.getElementById("updatedAt");
+  const noteEl    = document.getElementById("note");
 
-  // 변화율 & 최신가격 계산
-  if(values.length >= 1){
-    const last = values[values.length-1];
-    updatePrice(priceEl, last);
-  } else {
-    priceEl.textContent = "$—";
-  }
+  try{
+    statusEl.textContent = "Fetching latest…";
+    const data = await getJSONLatest(LATEST_PATH);
 
-  let pct = 0;
-  if(values.length>=2 && values[0]!==0) pct = (values[values.length-1]-values[0])/values[0]*100;
-  updateChange(changeEl, pct);
-
-  if(values.length < 2){
-    if (canvas._chart) canvas._chart.destroy();
-    const msgId = canvas.id + "-nodata";
-    const prev = document.getElementById(msgId);
-    if (!prev) {
-      const note = document.createElement("div");
-      note.id = msgId;
-      note.style.marginTop = "8px";
-      note.style.color = "#a1a1a6";
-      note.style.fontSize = ".9rem";
-      note.textContent = "No data for this period.";
-      canvas.parentElement.appendChild(note);
+    // data.updatedAt(ms) 또는 data.date(YYYY-MM-DD) 표기
+    let stamp = "";
+    if (typeof data.updatedAt === "number") {
+      const d = new Date(data.updatedAt);
+      stamp = d.toLocaleString();
+    } else if (typeof data.date === "string") {
+      stamp = data.date + " (ET)";
     }
-    return;
+    updatedEl.textContent = `Updated: ${stamp} | Now(ET): ${nowETString()}`;
+
+    // 오늘 데이터인지 간단 점검 (ET 기준)
+    const todayET = todayETISO();               // 'YYYY-MM-DD'
+    const isToday = (data.date === todayET);
+    noteEl.textContent = isToday ? "" :
+      `참고: 최신 스냅샷의 날짜가 오늘(${todayET})과 다릅니다. (data.date=${data.date})`;
+
+    renderItems(data.items || []);
+    statusEl.textContent = isToday ? "Live" : "Snapshot";
+
+  }catch(e){
+    statusEl.textContent = "Error";
+    const grid = document.getElementById("grid");
+    grid.innerHTML = `<div class="center" style="grid-column:1/-1">
+      <div>
+        <div class="muted" style="margin-bottom:6px">데이터를 불러오지 못했습니다.</div>
+        <code>${String(e.message || e)}</code>
+      </div>
+    </div>`;
   }
-
-  if(canvas._chart) canvas._chart.destroy();
-  canvas._chart = new Chart(ctx, {
-    type:"line",
-    data:{ labels, datasets:[{ data:values, borderColor:PRIMARY, backgroundColor:hexToRgba(PRIMARY,.12), borderWidth:2, pointRadius:0, fill:true, tension:.25 }] },
-    options:{
-      plugins:{ legend:{display:false}, tooltip:{mode:"index",intersect:false,callbacks:{label:(c)=>`$${(c.parsed.y??0).toFixed(2)}` }}},
-      scales:{ x:{ticks:{color:MUTED,maxTicksLimit:6},grid:{color:GRID}}, y:{ticks:{color:MUTED},grid:{color:GRID}} }
-    }
-  });
-
-  const ghost = document.getElementById(canvas.id + "-nodata");
-  if (ghost) ghost.remove();
-}
-
-function normalizeSeries(arr){ return (arr||[]).filter(p=>p && typeof p.Close==="number" && !isNaN(p.Close)); }
-function updateChange(el,pct){ const up=pct>=0; el.style.color = up?PRIMARY:"#d70015"; el.textContent=`${up?"▲":"▼"} ${pct.toFixed(2)}%`; }
-function updatePrice(el, last){ el.textContent = `$${Number(last).toFixed(2)}`; }
-function labelOf(s){
-  const str = String(s);
-  if (str.length >= 19 && str[10] === " ") return str.slice(11,16); // HH:mm
-  if (str.length >= 10) return str.slice(5,10);                     // MM-DD
-  return str;
-}
-function hexToRgba(hex,a){ const c=hex.replace("#",""); const v=parseInt(c.length===3?c.split("").map(x=>x+x).join(""):c,16);
-  return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${a})`; }
-function el(tag,cls,txt){ const n=document.createElement(tag); if(cls) n.className=cls; if(txt!=null) n.textContent=txt; return n; }
+})();
 </script>
 </body>
 </html>
